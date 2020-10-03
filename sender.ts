@@ -1,5 +1,7 @@
 import { encodeMsgpack, decodeMsgpack, BufWriter } from "./deps.ts";
+
 interface SenderOptions {
+  tagPrefix?: string;
   hostname?: string;
   port?: number;
 }
@@ -14,9 +16,10 @@ class FluentSender implements Sender {
   readonly #port: number;
   readonly #tagPrefix: string;
   #conn: Deno.Conn | null = null;
+  #bufWriter: BufWriter | null = null;
 
-  constructor(tagPrefix: string, options: SenderOptions) {
-    this.#tagPrefix = tagPrefix;
+  constructor(options: SenderOptions) {
+    this.#tagPrefix = options.tagPrefix ?? "";
     this.#hostname = options.hostname ?? "localhost";
     this.#port = options.port ?? 24224;
   }
@@ -32,33 +35,37 @@ class FluentSender implements Sender {
     }
   }
 
-  private async send(tag: string, time: number, record: Record<string, unknown>): Promise<void> {
-    const conn = await this.connectIfNeeded();
+  private async send(
+    tag: string,
+    time: number,
+    record: Record<string, unknown>,
+  ): Promise<void> {
     const payload = encodeMsgpack([
       this.#tagPrefix ? [this.#tagPrefix, tag].join(".") : tag,
       time,
       record,
     ]);
-    const w = BufWriter.create(conn);
-    await w.write(payload);
-    await w.flush();
+    const w = this.#bufWriter;
+    if (w) {
+      await w.write(payload);
+      await w.flush();
+    }
   }
 
-  private async connectIfNeeded(): Promise<Deno.Conn> {
+  private async connectIfNeeded(): Promise<void> {
     if (this.#conn == null) {
       this.#conn = await Deno.connect({
         hostname: this.#hostname,
         port: this.#port,
         transport: "tcp",
       });
+      this.#bufWriter = BufWriter.create(this.#conn);
     }
-    return this.#conn;
   }
 }
 
 export function createFluentSender(
-  tagPrefix: string,
   options: SenderOptions,
 ): Sender {
-  return new FluentSender(tagPrefix, options);
+  return new FluentSender(options);
 }

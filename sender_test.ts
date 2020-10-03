@@ -5,7 +5,8 @@ import { createFluentSender } from "./sender.ts";
 suite("sender", ({ test, todo, server }) => {
   test("simple", async () => {
     const tagPrefix = "foo";
-    const sender = createFluentSender(tagPrefix, {
+    const sender = createFluentSender({
+      tagPrefix,
       port: server.port,
     });
     try {
