@@ -40,14 +40,26 @@ class FluentSender implements Sender {
     time: number,
     record: Record<string, unknown>,
   ): Promise<void> {
-    const payload = encodeMsgpack([
+    const packet = this.createPacket(tag, time, record);
+    return this.sendPacket(packet);
+  }
+
+  private createPacket(
+    tag: string,
+    time: number,
+    record: Record<string, unknown>,
+  ): Uint8Array {
+    return encodeMsgpack([
       this.#tagPrefix ? [this.#tagPrefix, tag].join(".") : tag,
       time,
       record,
     ]);
+  }
+
+  private async sendPacket(data: Uint8Array): Promise<void> {
     const w = this.#bufWriter;
     if (w) {
-      await w.write(payload);
+      await w.write(data);
       await w.flush();
     }
   }
