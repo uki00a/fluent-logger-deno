@@ -33,6 +33,7 @@ class FluentSender implements Sender {
     if (this.#conn) {
       this.#conn.close();
       this.#conn = null;
+      this.#bufWriter = null;
     }
   }
 
