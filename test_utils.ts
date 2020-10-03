@@ -41,7 +41,7 @@ function createMockServer(port = 24224): MockServer {
   }
 
   function reset(): void {
-    receivedData.length = 0;
+    receivedData = [];
   }
 
   function close(): Promise<void> {
@@ -105,11 +105,8 @@ export function suite(
     Deno.test({
       name: `[${description}] ${name}`,
       async fn() {
-        try {
-          await fn();
-        } catch (e) {
-          server.reset();
-        }
+        server.reset();
+        await fn();
       },
       ...options,
     });
@@ -127,4 +124,30 @@ export function suite(
   suite({ test, todo, server });
   hook("afterAll", cleanup);
   defineTests();
+}
+
+export function waitFor<T>(predicate: () => Promise<T> | T): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let lastError: unknown | null = null;
+    const intervalID = setInterval(async () => {
+      try {
+        const result = await predicate();
+        cleanup();
+        resolve(result);
+      } catch (error) {
+        lastError = error;
+      }
+    }, 50);
+    const timeoutID = setTimeout(cancel, 2000);
+
+    function cleanup(): void {
+      clearInterval(intervalID);
+      clearTimeout(timeoutID);
+    }
+
+    function cancel(): void {
+      cleanup();
+      reject(lastError || new Error("timeout"));
+    }
+  });
 }
