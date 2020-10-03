@@ -12,9 +12,6 @@ suite("sender", ({ test, todo, server }) => {
     try {
       const tag = "bar";
       await sender.post(tag, { "name": "bob" });
-      await new Promise<void>((resolve, reject) => {
-        setTimeout(() => resolve(), 200);
-      });
       const data = server.getRecievedData();
       assertEquals(data.length, 1);
       assertEquals(data[0][0], "foo.bar");
