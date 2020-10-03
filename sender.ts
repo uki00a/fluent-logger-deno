@@ -32,6 +32,7 @@ class FluentSender implements Sender {
   close() {
     if (this.#conn) {
       this.#conn.close();
+      this.#conn = null;
     }
   }
 
