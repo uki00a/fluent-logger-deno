@@ -64,8 +64,11 @@ function createMockServer(port = 24224): MockServer {
 
 interface TestSuite {
   test(name: string, fn: () => Promise<void> | void): void;
+  todo(name: string): void;
   server: MockServer;
 }
+
+function noop(): void {}
 
 export function suite(
   description: string,
@@ -73,6 +76,10 @@ export function suite(
 ): void {
   const testCases = [] as Array<Deno.TestDefinition>;
   const server = createMockServer();
+
+  function todo(name: string): void {
+    testCases.push({ name, fn: noop, ignore: true });
+  }
 
   function test(name: string, fn: () => Promise<void> | void): void {
     testCases.push({ name, fn });
@@ -83,7 +90,7 @@ export function suite(
       name,
       fn,
       sanitizeOps: false,
-      sanitizeResources: false
+      sanitizeResources: false,
     });
   }
 
@@ -97,7 +104,7 @@ export function suite(
     const { name, fn, ...options } = testCase;
     Deno.test({
       name: `[${description}] ${name}`,
-      async fn(){
+      async fn() {
         try {
           await fn();
         } catch (e) {
@@ -117,7 +124,7 @@ export function suite(
   }
 
   hook("beforeAll", setup);
-  suite({ test, server });
+  suite({ test, todo, server });
   hook("afterAll", cleanup);
   defineTests();
 }

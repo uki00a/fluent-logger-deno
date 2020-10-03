@@ -2,7 +2,7 @@ import { assertEquals } from "./test_deps.ts";
 import { suite } from "./test_utils.ts";
 import { createFluentSender } from "./sender.ts";
 
-suite("sender", ({ test, server }) => {
+suite("sender", ({ test, todo, server }) => {
   test("simple", async () => {
     const tagPrefix = "foo";
     const sender = createFluentSender(tagPrefix, {
@@ -23,4 +23,8 @@ suite("sender", ({ test, server }) => {
       sender.close();
     }
   });
+
+  todo("concurrent");
+  todo("tls");
+  todo("unix socket");
 });
