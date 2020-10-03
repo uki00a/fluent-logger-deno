@@ -59,6 +59,7 @@ class FluentSender implements Sender {
   }
 
   private async sendPacket(data: Uint8Array): Promise<void> {
+    await this.connectIfNeeded();
     const w = this.#bufWriter;
     if (w) {
       await w.write(data);
@@ -68,13 +69,17 @@ class FluentSender implements Sender {
 
   private async connectIfNeeded(): Promise<void> {
     if (this.#conn == null) {
-      this.#conn = await Deno.connect({
-        hostname: this.#hostname,
-        port: this.#port,
-        transport: "tcp",
-      });
-      this.#bufWriter = BufWriter.create(this.#conn);
+      await this.connect();
     }
+  }
+
+  private async connect(): Promise<void> {
+    this.#conn = await Deno.connect({
+      hostname: this.#hostname,
+      port: this.#port,
+      transport: "tcp",
+    });
+    this.#bufWriter = BufWriter.create(this.#conn);
   }
 }
 
