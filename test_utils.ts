@@ -19,7 +19,7 @@ interface MockServer {
  * @see https://github.com/fluent/fluentd/wiki/Forward-Protocol-Specification-v1
  */
 function createMockServer(port = 24224): MockServer {
-  const listener = Deno.listen({ port });
+  const listener = Deno.listen({ hostname: "127.0.0.1", port });
   const listenerPromise = deferred<void>();
   let receivedData = [] as Array<Message>;
 

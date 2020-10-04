@@ -20,7 +20,7 @@ class FluentSender implements Sender {
 
   constructor(options: SenderOptions) {
     this.#tagPrefix = options.tagPrefix ?? "";
-    this.#hostname = options.hostname ?? "localhost";
+    this.#hostname = options.hostname ?? "127.0.0.1";
     this.#port = options.port ?? 24224;
   }
 
