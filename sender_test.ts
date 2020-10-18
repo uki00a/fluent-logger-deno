@@ -25,6 +25,39 @@ suite("sender", ({ test, todo, server }) => {
     }
   });
 
+  test("send event with date", async () => {
+    const tagPrefix = faker.random.word();
+    const sender = createFluentSender({
+      tagPrefix,
+      port: server.port,
+    });
+    const tag = faker.random.word();
+    const event = { "user": faker.name.findName() };
+    try {
+      for (
+        const time of [
+          faker.date.past(),
+          faker.date.future().valueOf(),
+        ]
+      ) {
+        await sender.post(tag, time, { ...event });
+        await waitFor(() => {
+          const data = server.getRecievedData();
+          assertEquals(data.length, 1);
+          assertEquals(data[0], [
+            `${tagPrefix}.${tag}`,
+            typeof time === "number" ? time : Math.floor(time.valueOf() / 1000),
+            event,
+          ]);
+        });
+        server.reset();
+      }
+    } finally {
+      sender.close();
+    }
+  });
+
+  todo("EventTime");
   todo("concurrent");
   todo("tls");
   todo("unix socket");

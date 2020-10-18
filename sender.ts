@@ -1,4 +1,4 @@
-import { encodeMsgpack, decodeMsgpack, BufWriter } from "./deps.ts";
+import { BufWriter, decodeMsgpack, encodeMsgpack } from "./deps.ts";
 
 interface SenderOptions {
   tagPrefix?: string;
@@ -6,8 +6,15 @@ interface SenderOptions {
   port?: number;
 }
 
+type Time = Date | number;
+
 export interface Sender {
   post(tag: string, record: Record<string, unknown>): Promise<void>;
+  post(
+    tag: string,
+    time: Time,
+    record: Record<string, unknown>,
+  ): Promise<void>;
   close(): void;
 }
 
@@ -24,8 +31,14 @@ class FluentSender implements Sender {
     this.#port = options.port ?? 24224;
   }
 
-  async post(tag: string, record: Record<string, unknown>) {
-    const time = Math.floor(Date.now() / 1000);
+  async post(
+    tag: string,
+    timeOrRecord: Time | Record<string, unknown>,
+    maybeRecord?: Record<string, unknown>,
+  ): Promise<void> {
+    const [time, record] = isTime(timeOrRecord)
+      ? [timeOrRecord, maybeRecord!]
+      : [toUnixtimestamp(new Date()), timeOrRecord];
     await this.send(tag, time, record);
   }
 
@@ -39,7 +52,7 @@ class FluentSender implements Sender {
 
   private async send(
     tag: string,
-    time: number,
+    time: Time,
     record: Record<string, unknown>,
   ): Promise<void> {
     const packet = this.createPacket(tag, time, record);
@@ -48,12 +61,12 @@ class FluentSender implements Sender {
 
   private createPacket(
     tag: string,
-    time: number,
+    time: Time,
     record: Record<string, unknown>,
   ): Uint8Array {
     return encodeMsgpack([
       this.#tagPrefix ? [this.#tagPrefix, tag].join(".") : tag,
-      time,
+      typeof time === "number" ? time : toUnixtimestamp(time),
       record,
     ]);
   }
@@ -81,6 +94,14 @@ class FluentSender implements Sender {
     });
     this.#bufWriter = BufWriter.create(this.#conn);
   }
+}
+
+function toUnixtimestamp(date: Date): number {
+  return Math.floor(date.valueOf() / 1000);
+}
+
+function isTime(x: unknown): x is Time {
+  return typeof x === "number" || x instanceof Date;
 }
 
 export function createFluentSender(

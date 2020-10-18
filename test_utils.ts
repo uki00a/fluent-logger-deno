@@ -20,24 +20,43 @@ interface MockServer {
  */
 function createMockServer(port = 24224): MockServer {
   const listener = Deno.listen({ hostname: "127.0.0.1", port });
-  const listenerPromise = deferred<void>();
+  const done = deferred<void>();
   let receivedData = [] as Array<Message>;
 
   function listen(): void {
     (async () => {
       for await (const conn of listener) {
+        acceptConnAndIterateEvents(conn);
+      }
+      done.resolve();
+    })();
+  }
+
+  async function acceptConnAndIterateEvents(conn: Deno.Conn): Promise<void> {
+    while (true) {
+      try {
         const buf = new Uint8Array(15000); // FIXME
         const bytesRead = await conn.read(buf);
-        receivedData.push(
-          decodeMsgpack(buf.subarray(
-            0,
-            typeof bytesRead === "number" ? bytesRead : 0,
-          )),
-        );
-        conn.close();
+        if (bytesRead === null) {
+          conn.close();
+          continue;
+        } else {
+          receivedData.push(
+            decodeMsgpack(buf.subarray(
+              0,
+              bytesRead,
+            )),
+          );
+        }
+      } catch (err) {
+        if (err instanceof Deno.errors.BadResource) {
+          break;
+        } else {
+          done.reject(err);
+          break;
+        }
       }
-      listenerPromise.resolve();
-    })();
+    }
   }
 
   function reset(): void {
@@ -46,7 +65,7 @@ function createMockServer(port = 24224): MockServer {
 
   function close(): Promise<void> {
     listener.close();
-    return listenerPromise;
+    return done;
   }
 
   function getRecievedData(): Array<Message> {
